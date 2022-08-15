@@ -1,0 +1,62 @@
+---
+text: "Оцениваем задачу {{ task | d('TASK') }}"
+blocks:
+  - type: header
+    text:
+      type: plain_text
+      text: "Оцениваем задачу {{ task | d('TASK')}}"
+      emoji: false
+    block_id: header
+  - type: divider
+  - type: section
+    text:
+      type: mrkdwn
+      text: '{{ summary | d('SUMMARY') }}'
+    block_id: summary
+{% if description %}
+  - type: section
+    text:
+      type: "mrkdwn"
+      text: '{{ description | d('DESCRIPTION') }}'
+    block_id: "description"
+{% endif %}
+  - type: divider
+  - type: actions
+    elements:
+      - type: "radio_buttons"
+        options:
+{% for k,v in { 'one': 1, 'two': 2, 'three': 3, 'five': 5, 'eight': 8 }.items() %}
+          - text:
+              type: "mrkdwn"
+              text:  ":{{ k }}:"
+            value: "{{ v }}"
+{% endfor %}
+        action_id: "{{ options_id }}"
+    block_id: "opt_{{ action_uuid  | d(default_uuid) }}"
+  - type: "actions"
+    elements:
+      - type: "button"
+        text:
+          type: "plain_text"
+          text: "Голосовать"
+          emoji: false
+        style: "primary"
+        value: "rate"
+        action_id: "{{ send_id }}"
+    block_id: "btn_{{ action_uuid  | d(default_uuid) }}"
+  - type: "section"
+    text:
+      type: "mrkdwn"
+      text: "Для завершения голосования по задаче {{ task | d('TASK') }} нажми кнопку ➔"
+    accessory:
+      type: "button"
+      text:
+        type: "plain_text"
+#        text: '✅ Завершить'
+        text: "💥 Завершить"
+        emoji: true
+      value: "{{ task | d('TASK') }}_{{ task_id | d(0) }}"
+      action_id: "{{ complete_id }}"
+      style: "danger"
+    block_id: "fnsh_{{ action_uuid | d(default_uuid) }}"
+vote_id: "{{ action_uuid  | d(default_uuid) }}"
