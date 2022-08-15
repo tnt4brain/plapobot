@@ -17,15 +17,13 @@ from slack_bolt import App
 from slack_bolt.adapter.flask import SlackRequestHandler
 
 logging.basicConfig(level=logging.INFO)
-JIRA_URL = os.getenv("JIRA_URL", None)
-JIRA_USER = os.getenv("JIRA_ACCOUNT", None)
-JIRA_PASSWORD = os.getenv("JIRA_PASSWORD", None)
-SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET", None)
-SLACK_TOKEN = os.getenv("SLACK_TOKEN", None)
-for i in ["JIRA_URL", "JIRA_USER", "JIRA_PASSWORD", "SLACK_SIGNING_SECRET", "SLACK_TOKEN"]:
-    if globals()[i] is None:
-        logging.error(f"{i} is missing, exiting...")
+SLACK_WEBHOOK_PATH = "/slack/events"
+for curr_key in ["JIRA_URL", "JIRA_USER", "JIRA_PASSWORD", "SLACK_SIGNING_SECRET", "SLACK_TOKEN"]:
+    curr_value = os.getenv(curr_key, None)
+    if curr_value is None:
+        logging.error(f"{curr_key} is missing, exiting...")
         exit(1)
+    globals()[curr_key] = curr_value
 STORY_POINTS_ID = None
 PREPARED_ISSUE_RE = re.compile('^[A-Z]+-[0-9]+$')
 CLEANSER_RE = re.compile(r'[^\w\d \-]+', re.UNICODE)
@@ -79,10 +77,10 @@ class Vote(object):
 def simple_jira_request(url, method='GET', data=None, headers=None):
     if headers is None:
         headers = {}
-    user = "plapobot"
-    passwd = "s3uW5H8jmfHvKPu"
+    user = globals()['JIRA_USER']
+    passwd = globals()['JIRA_PASSWORD']
     dgst = base64.standard_b64encode(f"{user}:{passwd}".encode('utf-8'))
-    r = urllib.request.Request(url=f"{JIRA_URL}{url}", data=data)
+    r = urllib.request.Request(url=f"{globals()['JIRA_URL']}{url}", data=data)
     r.method = method
     r.add_header("Accept", "application/json,*.*;q=0.9")
     r.add_header("Authorization", f"Basic {dgst.decode('utf-8')}")
@@ -141,14 +139,14 @@ def write_jira_issue(issue_id, value):
         return result
 
 
-app = App(signing_secret=SLACK_SIGNING_SECRET,
-          token=SLACK_TOKEN)
+app = App(signing_secret=globals()['SLACK_SIGNING_SECRET'],
+          token=globals()['SLACK_TOKEN'])
 
 
 @app.middleware  # or app.use(log_request)
-def log_request(context, body, next):
+def log_request(context, body, next_handler):
     context.logger.info(pprint.pformat(body))
-    return next()
+    return next_handler()
 
 
 @app.event({"type": "reaction_added"})
@@ -387,7 +385,7 @@ flask_app = Flask(__name__)
 handler = SlackRequestHandler(app)
 
 
-@flask_app.route("/slack/events", methods=["POST"])
+@flask_app.route(SLACK_WEBHOOK_PATH, methods=["POST"])
 def slack_events():
     return handler.handle(request)
 
@@ -402,4 +400,4 @@ if __name__ == '__main__':
     load_jira_config()
     # configure_commands(COMMANDS)
     magic = J2()
-    flask_app.run(debug=True)
+    flask_app.run(debug=False)
